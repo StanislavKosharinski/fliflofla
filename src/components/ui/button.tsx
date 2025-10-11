@@ -147,7 +147,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
-        className={cn(baseClasses, variantClasses[variant], sizeClasses[size], className)}
+        className={cn("cursor-pointer", baseClasses, variantClasses[variant], sizeClasses[size], className)}
         onClick={createRipple}
         disabled={loading}
         type={type ?? "button"}

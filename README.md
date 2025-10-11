@@ -8,6 +8,7 @@ A minimal Pomodoro timer built with Next.js (App Router), React, TypeScript, Tai
 - Visual progress indicator, mode pill, and tabular countdown for easy scanning.
 - Custom durations, long break cadence, and sound toggle persisted to `localStorage`.
 - Optional chime and browser notification at the end of each interval using the Web Audio and Notifications APIs.
+- Daily task tracker with per-day schedules, inline editing, session history, and safeguards for clearing data.
 
 ### Development
 
@@ -32,6 +33,7 @@ The build command runs type-checking, linting, and outputs the production build.
 - `src/app/` – Next.js App Router entry points and global styles.
 - `src/components/` – UI building blocks (`ui/`) and the `pomodoro` feature module.
 - `src/hooks/use-timer.ts` – Encapsulated timer logic, persistence, and interval cleanup.
+- `src/hooks/use-scheduler.ts` – Daily task scheduler with storage helpers and timer integration.
 - `src/lib/utils.ts` – Shared helpers (e.g., class name merger for styling).
 
 ### Accessibility & Responsiveness
@@ -40,4 +42,4 @@ The build command runs type-checking, linting, and outputs the production build.
 - Layout adapts gracefully from 320px mobile to large desktop viewports.
 
 ### Future Enhancements
-Potential next steps include task tracking, richer notifications, statistics, PWA support, or authentication. These are out of scope for the current MVP but can be layered on thanks to the modular hook-based architecture.
+Potential next steps include richer notification settings, visual productivity charts, PWA/offline support, or authentication. These are out of scope for the current MVP but can be layered on thanks to the modular hook-based architecture.

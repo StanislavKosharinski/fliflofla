@@ -14,6 +14,15 @@ export interface TimerSettings {
   notificationsEnabled: boolean;
 }
 
+export interface SessionEvent {
+  mode: TimerMode;
+  startedAt: number;
+  endedAt: number;
+  scheduledDuration: number;
+  elapsedSeconds: number;
+  interrupted: boolean;
+}
+
 interface UseTimerReturn {
   mode: TimerMode;
   isRunning: boolean;
@@ -28,6 +37,7 @@ interface UseTimerReturn {
   skip: () => void;
   toggleRunning: () => void;
   updateSettings: (partial: Partial<TimerSettings>) => void;
+  sessionEvent: SessionEvent | null;
 }
 
 const STORAGE_KEY = "pomodoro-settings";
@@ -91,9 +101,13 @@ export function useTimer(): UseTimerReturn {
   const [timeLeft, setTimeLeft] = useState(DEFAULT_SETTINGS.focusMinutes * 60);
   const [hydrated, setHydrated] = useState(false);
   const [completedFocusSessions, setCompletedFocusSessions] = useState(0);
+  const [sessionEvent, setSessionEvent] = useState<SessionEvent | null>(null);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const focusCounterRef = useRef(0);
+  const sessionStartRef = useRef<number>(Date.now());
+  const sessionDurationRef = useRef<number>(DEFAULT_SETTINGS.focusMinutes * 60);
+  const timeLeftRef = useRef<number>(timeLeft);
 
   const getDurationForMode = useCallback(
     (targetMode: TimerMode): number => {
@@ -110,6 +124,17 @@ export function useTimer(): UseTimerReturn {
     },
     [settings.breakMinutes, settings.focusMinutes, settings.longBreakMinutes]
   );
+
+  useEffect(() => {
+    sessionDurationRef.current = getDurationForMode(mode);
+    if (!isRunning) {
+      sessionStartRef.current = Date.now();
+    }
+  }, [getDurationForMode, mode, isRunning]);
+
+  useEffect(() => {
+    timeLeftRef.current = timeLeft;
+  }, [timeLeft]);
 
   const clearTimer = useCallback(() => {
     if (intervalRef.current) {
@@ -150,6 +175,25 @@ export function useTimer(): UseTimerReturn {
 
   const transitionMode = useCallback(() => {
     setMode((previousMode) => {
+      const scheduledDuration = sessionDurationRef.current;
+      const elapsedSeconds = Math.min(
+        scheduledDuration,
+        Math.max(0, scheduledDuration - timeLeftRef.current)
+      );
+      const endedAt = Date.now();
+      const startedAt = sessionStartRef.current;
+
+      if (previousMode) {
+        setSessionEvent({
+          mode: previousMode,
+          startedAt,
+          endedAt,
+          scheduledDuration,
+          elapsedSeconds,
+          interrupted: elapsedSeconds < scheduledDuration,
+        });
+      }
+
       let nextMode: TimerMode = "focus";
 
       if (previousMode === "focus") {
@@ -165,6 +209,8 @@ export function useTimer(): UseTimerReturn {
       }
 
       setTimeLeft(getDurationForMode(nextMode));
+      sessionStartRef.current = Date.now();
+      sessionDurationRef.current = getDurationForMode(nextMode);
       return nextMode;
     });
   }, [
@@ -221,6 +267,9 @@ export function useTimer(): UseTimerReturn {
     focusCounterRef.current = 0;
     setCompletedFocusSessions(0);
     setTimeLeft(getDurationForMode("focus"));
+    sessionStartRef.current = Date.now();
+    sessionDurationRef.current = getDurationForMode("focus");
+    setSessionEvent(null);
   }, [getDurationForMode, pause]);
 
   const skip = useCallback(() => {
@@ -260,5 +309,6 @@ export function useTimer(): UseTimerReturn {
     skip,
     toggleRunning,
     updateSettings,
+    sessionEvent,
   };
 }
