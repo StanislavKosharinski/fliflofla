@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Pomodoro Timer App
 
-## Getting Started
+A minimal Pomodoro timer built with Next.js (App Router), React, TypeScript, Tailwind CSS, and Sera UI primitives. The timer keeps focus and break sessions on track, remembers your preferences locally, and stays responsive from mobile through desktop.
 
-First, run the development server:
+### Core Features
+- Focus, short break, and optional long break cycles with automatic switching.
+- Start, pause, reset, and skip controls implemented with the Sera UI button component.
+- Visual progress indicator, mode pill, and tabular countdown for easy scanning.
+- Custom durations, long break cadence, and sound toggle persisted to `localStorage`.
+- Optional chime and browser notification at the end of each interval using the Web Audio and Notifications APIs.
+
+### Development
+
+Install dependencies and start the dev server:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit [http://localhost:3000](http://localhost:3000) to use the timer. The UI updates instantly while you edit files under `src/`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Build & Lint
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+```
 
-## Learn More
+The build command runs type-checking, linting, and outputs the production build.
 
-To learn more about Next.js, take a look at the following resources:
+### Project Structure
+- `src/app/` – Next.js App Router entry points and global styles.
+- `src/components/` – UI building blocks (`ui/`) and the `pomodoro` feature module.
+- `src/hooks/use-timer.ts` – Encapsulated timer logic, persistence, and interval cleanup.
+- `src/lib/utils.ts` – Shared helpers (e.g., class name merger for styling).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Accessibility & Responsiveness
+- Keyboard-accessible buttons with descriptive `aria-label`s.
+- High-contrast color palette with dark-mode support.
+- Layout adapts gracefully from 320px mobile to large desktop viewports.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Future Enhancements
+Potential next steps include task tracking, richer notifications, statistics, PWA support, or authentication. These are out of scope for the current MVP but can be layered on thanks to the modular hook-based architecture.
