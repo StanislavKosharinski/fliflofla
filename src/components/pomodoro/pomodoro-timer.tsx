@@ -22,7 +22,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { useScheduler } from "@/hooks/use-scheduler";
 
-import type { TaskEntry } from "@/hooks/use-scheduler";
+import type { DaySchedule, TaskEntry } from "@/hooks/use-scheduler";
 import type { TimerMode, TimerSettings } from "@/hooks/use-timer";
 
 const MODE_LABELS: Record<TimerMode, string> = {
@@ -169,6 +169,24 @@ function ConfirmDialog({
   );
 }
 
+function buildDaySummaryText(day: DaySchedule | undefined): string {
+  if (!day) {
+    return "No day selected.";
+  }
+
+  const orderedTasks = day.tasks.slice().sort((a, b) => b.updatedAt - a.updatedAt);
+
+  if (orderedTasks.length === 0) {
+    return `No tasks recorded.`;
+  }
+
+  const lines = orderedTasks.map((task, index) => {
+    return `${index + 1}. ${task.title}`;
+  });
+
+  return `${lines.join("\n")}`;
+}
+
 export function PomodoroTimer() {
   const {
     mode,
@@ -207,6 +225,7 @@ export function PomodoroTimer() {
     null
   );
   const [notificationSupported, setNotificationSupported] = useState(false);
+  const [clipboardSupported, setClipboardSupported] = useState(false);
 
   const [taskTitle, setTaskTitle] = useState("");
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -214,6 +233,8 @@ export function PomodoroTimer() {
   const [deleteDayKey, setDeleteDayKey] = useState<string | null>(null);
   const [showDeleteDayDialog, setShowDeleteDayDialog] = useState(false);
   const [showClearScheduleDialog, setShowClearScheduleDialog] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<"success" | "error" | null>(null);
+  const copyFeedbackTimeout = useRef<number | null>(null);
 
   useEffect(() => {
     setLocalSettings(settings);
@@ -223,6 +244,11 @@ export function PomodoroTimer() {
     setNotificationSupported(
       typeof window !== "undefined" && "Notification" in window
     );
+    setClipboardSupported(
+      typeof navigator !== "undefined" &&
+        Boolean(navigator.clipboard) &&
+        typeof navigator.clipboard.writeText === "function"
+    );
   }, []);
 
   useEffect(() => {
@@ -231,6 +257,10 @@ export function PomodoroTimer() {
       if (notificationFeedbackTimeout.current) {
         window.clearTimeout(notificationFeedbackTimeout.current);
         notificationFeedbackTimeout.current = null;
+      }
+      if (copyFeedbackTimeout.current) {
+        window.clearTimeout(copyFeedbackTimeout.current);
+        copyFeedbackTimeout.current = null;
       }
     };
   }, []);
@@ -470,6 +500,37 @@ export function PomodoroTimer() {
     setShowClearScheduleDialog(false);
   };
 
+  const showCopyFeedback = useCallback(
+    (status: "success" | "error") => {
+      if (copyFeedbackTimeout.current) {
+        window.clearTimeout(copyFeedbackTimeout.current);
+      }
+      setCopyStatus(status);
+      copyFeedbackTimeout.current = window.setTimeout(() => {
+        setCopyStatus(null);
+        copyFeedbackTimeout.current = null;
+      }, 2500);
+    },
+    []
+  );
+
+  const handleCopyDaySummary = useCallback(() => {
+    if (!clipboardSupported) {
+      showCopyFeedback("error");
+      return;
+    }
+    if (!selectedDay || selectedDay.tasks.length === 0) {
+      showCopyFeedback("error");
+      return;
+    }
+
+    const summaryText = buildDaySummaryText(selectedDay);
+    navigator.clipboard
+      .writeText(summaryText)
+      .then(() => showCopyFeedback("success"))
+      .catch(() => showCopyFeedback("error"));
+  }, [clipboardSupported, selectedDay, showCopyFeedback]);
+
   return (
     <>
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-10 sm:px-6 md:py-16">
@@ -603,6 +664,7 @@ export function PomodoroTimer() {
                   size="sm"
                   onClick={() => setSelectedDay(todayKey)}
                   aria-label="Jump to today's schedule"
+		  className="self-end"
                 >
                   Jump to today
                 </Button>
@@ -649,28 +711,52 @@ export function PomodoroTimer() {
                   </div>
                 </div>
 
+                <div className="flex flex-wrap items-center justify-end gap-3 text-xs text-slate-500 dark:text-slate-400">
+                  {copyStatus === "success" && (
+                    <span className="rounded-full bg-emerald-100 px-3 py-1 font-semibold text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-200">
+                      Copied to clipboard
+                    </span>
+                  )}
+                  {copyStatus === "error" && (
+                    <span className="rounded-full bg-amber-100 px-3 py-1 font-semibold text-amber-700 dark:bg-amber-400/20 dark:text-amber-200">
+                      Unable to copy
+                    </span>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyDaySummary}
+                    aria-label={`Copy task list for ${dayLabel}`}
+                    disabled={
+                      !clipboardSupported || !selectedDay || selectedDay.tasks.length === 0
+                    }
+                  >
+                    Copy task list
+                  </Button>
+                </div>
+
                 <form
                   onSubmit={handleTaskSubmit}
-                  className="flex flex-col gap-3 rounded-xl border border-dashed border-slate-300/80 bg-white/50 p-4 dark:border-slate-700/70 dark:bg-slate-900/40 sm:flex-row sm:items-center"
+                  className="grid grid-cols-6 gap-3 rounded-xl border border-dashed border-slate-300/80 bg-white/50 p-4 dark:border-slate-700/70 dark:bg-slate-900/40 sm:flex-row sm:items-center"
                 >
                   <label htmlFor="task-title" className="sr-only">
                     Task title
                   </label>
-                  <input
-                    id="task-title"
-                    value={taskTitle}
-                    onChange={(event) => setTaskTitle(event.target.value)}
-                    placeholder="What are you working on?"
-                    className="w-5/6 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-indigo-400"
-                  />
-                  <Button
-                    type="submit"
-                    disabled={!taskTitle.trim()}
-                    aria-label="Add task"
-		    className="w-1/6"
-                  >
-                    Add task
-                  </Button>
+                <input
+                  id="task-title"
+                  value={taskTitle}
+                  onChange={(event) => setTaskTitle(event.target.value)}
+                  placeholder="What are you working on?"
+                  className="col-span-5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-indigo-400"
+                />
+                <Button
+                  type="submit"
+                  disabled={!taskTitle.trim()}
+                  aria-label="Add task"
+		  className="col-span-1"
+                >
+                  Add task
+                </Button>
                 </form>
 
                 <div className="space-y-4">
@@ -687,11 +773,11 @@ export function PomodoroTimer() {
                           key={task.id}
                           className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm transition hover:border-indigo-200 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:border-indigo-500/50"
                         >
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="grid grid-cols-12 gap-3 sm:flex-row sm:items-start sm:justify-between">
                             {editingTaskId === task.id ? (
                               <form
                                 onSubmit={handleEditingSubmit}
-                                className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
+                                className="col-span-8 gap-2 sm:flex-row sm:items-center sm:gap-3"
                               >
                                 <label
                                   htmlFor={`edit-${task.id}`}
@@ -707,7 +793,7 @@ export function PomodoroTimer() {
                                   }
                                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-indigo-400"
                                 />
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 mt-2">
                                   <Button type="submit" size="sm">
                                     Save
                                   </Button>
@@ -722,7 +808,7 @@ export function PomodoroTimer() {
                                 </div>
                               </form>
                             ) : (
-                              <div>
+                              <div className="col-span-8">
                                 <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
                                   {task.title}
                                 </h3>
@@ -733,7 +819,7 @@ export function PomodoroTimer() {
                                 </p>
                               </div>
                             )}
-                            <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex justify-end col-span-4 gap-2 items-center gap-2">
                               <Button
                                 variant={isActive ? "secondary" : "outline"}
                                 size="sm"
@@ -744,7 +830,6 @@ export function PomodoroTimer() {
                                     ? "Task already active"
                                     : "Attach timer to this task"
                                 }
-				className={`${isActive ? "bg-indigo-500 animate-pulse text-white" : ""}`}
                               >
                                 {isActive ? "Active" : "Set active"}
                               </Button>
