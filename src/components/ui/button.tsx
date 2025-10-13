@@ -121,21 +121,21 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ? "bg-white/30 dark:bg-slate-900/20"
         : "bg-slate-900/10 dark:bg-white/10";
 
-    const baseClasses =
-      "relative inline-flex items-center justify-center rounded-md text-sm font-medium transition-transform duration-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 dark:focus-visible:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-50 overflow-hidden active:scale-[0.97]";
+const baseClasses =
+  "relative inline-flex items-center justify-center rounded-md text-sm font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-400 dark:focus-visible:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-50 overflow-hidden active:scale-[0.98] hover:-translate-y-0.5 shadow-sm";
 
-    const variantClasses: Record<ButtonVariant, string> = {
-      default:
-        "bg-slate-900 text-slate-50 hover:bg-slate-900/90 dark:bg-slate-50 dark:text-slate-900 dark:hover:bg-slate-50/90",
-      destructive:
-        "bg-red-500 text-white hover:bg-red-600 dark:bg-red-600 dark:text-white dark:hover:bg-red-700",
-      outline:
-        "border border-slate-200 bg-transparent hover:bg-slate-100 text-slate-900 dark:border-slate-700 dark:hover:bg-slate-800 dark:text-slate-50",
-      secondary:
-        "bg-slate-100 text-slate-900 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-50 dark:hover:bg-slate-700",
-      ghost:
-        "hover:bg-slate-100 text-slate-900 dark:hover:bg-slate-800 dark:text-slate-50",
-      link: "text-slate-900 underline-offset-4 hover:underline dark:text-slate-50",
+const variantClasses: Record<ButtonVariant, string> = {
+  default:
+    "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-lg hover:shadow-xl hover:from-indigo-500/90 hover:via-purple-500/90 hover:to-pink-500/90 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400",
+  destructive:
+    "bg-red-500 text-white shadow-md hover:bg-red-600 dark:bg-red-600 dark:text-white dark:hover:bg-red-700",
+  outline:
+    "border border-transparent bg-gradient-to-r from-slate-100 via-white to-slate-100 text-slate-900 hover:border-indigo-200 hover:shadow-lg dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 dark:text-slate-50 dark:hover:border-purple-400",
+  secondary:
+    "bg-gradient-to-r from-cyan-400 via-sky-400 to-emerald-400 text-white shadow-md hover:shadow-xl hover:from-cyan-400/90 hover:via-sky-400/90 hover:to-emerald-400/90 dark:from-cyan-500 dark:via-sky-500 dark:to-emerald-500",
+  ghost:
+    "hover:bg-slate-100 text-slate-900 dark:hover:bg-slate-800 dark:text-slate-50",
+  link: "text-slate-900 underline-offset-4 hover:underline dark:text-slate-50",
     };
 
     const sizeClasses: Record<ButtonSize, string> = {
