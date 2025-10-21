@@ -54,38 +54,46 @@ const DEFAULT_SETTINGS: TimerSettings = {
 
 const MINUTES_FALLBACK = 1;
 
+type UnknownRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === "object" && value !== null;
+}
+
 function sanitizeNumber(value: unknown, fallback: number): number {
   const numeric = Number(value);
   return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
 }
 
-function sanitizeSettings(settings: Partial<TimerSettings>): TimerSettings {
+function sanitizeSettings(settings: unknown): TimerSettings {
+  const source = isRecord(settings) ? settings : {};
+  const longBreakIntervalRaw = sanitizeNumber(
+    source.longBreakInterval,
+    DEFAULT_SETTINGS.longBreakInterval
+  );
+
   return {
-    focusMinutes: sanitizeNumber(settings.focusMinutes, DEFAULT_SETTINGS.focusMinutes),
-    breakMinutes: sanitizeNumber(settings.breakMinutes, DEFAULT_SETTINGS.breakMinutes),
+    focusMinutes: sanitizeNumber(source.focusMinutes, DEFAULT_SETTINGS.focusMinutes),
+    breakMinutes: sanitizeNumber(source.breakMinutes, DEFAULT_SETTINGS.breakMinutes),
     longBreakMinutes: sanitizeNumber(
-      settings.longBreakMinutes,
+      source.longBreakMinutes,
       DEFAULT_SETTINGS.longBreakMinutes
     ),
     enableLongBreak:
-      typeof settings.enableLongBreak === "boolean"
-        ? settings.enableLongBreak
+      typeof source.enableLongBreak === "boolean"
+        ? source.enableLongBreak
         : DEFAULT_SETTINGS.enableLongBreak,
     longBreakInterval: Math.max(
       1,
-      Math.round(
-        Number.isFinite(settings.longBreakInterval)
-          ? Number(settings.longBreakInterval)
-          : DEFAULT_SETTINGS.longBreakInterval
-      )
+      Math.round(longBreakIntervalRaw)
     ),
     soundEnabled:
-      typeof settings.soundEnabled === "boolean"
-        ? settings.soundEnabled
+      typeof source.soundEnabled === "boolean"
+        ? source.soundEnabled
         : DEFAULT_SETTINGS.soundEnabled,
     notificationsEnabled:
-      typeof settings.notificationsEnabled === "boolean"
-        ? settings.notificationsEnabled
+      typeof source.notificationsEnabled === "boolean"
+        ? source.notificationsEnabled
         : DEFAULT_SETTINGS.notificationsEnabled,
   };
 }
@@ -148,7 +156,7 @@ export function useTimer(): UseTimerReturn {
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY);
       if (!stored) return;
-      const parsed = JSON.parse(stored) as Partial<TimerSettings>;
+      const parsed: unknown = JSON.parse(stored);
       const sanitized = sanitizeSettings(parsed);
       setSettings(sanitized);
       setTimeLeft(clampMinutes(sanitized.focusMinutes) * 60);

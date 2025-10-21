@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useMemo, useRef } from "react";
 
 /**
  * Custom hook for handling keyboard shortcuts
@@ -9,52 +9,65 @@ export function useKeyboardShortcut(
   callback: () => void,
   enabled: boolean = true
 ) {
+  const targetSequence = useMemo(
+    () => keys.map((key) => key.toLowerCase()),
+    [keys]
+  );
+
+  const timeoutRef = useRef<number | null>(null);
+  const sequenceRef = useRef<string[]>([]);
+
+  const resetSequence = useCallback(() => {
+    if (timeoutRef.current) {
+      window.clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    sequenceRef.current = [];
+  }, []);
+
+  const scheduleReset = useCallback(() => {
+    if (timeoutRef.current) {
+      window.clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = window.setTimeout(() => {
+      sequenceRef.current = [];
+      timeoutRef.current = null;
+    }, 3000);
+  }, []);
+
   const handleKeyDown = useCallback(
-    (keySequence: string[]) => (event: KeyboardEvent) => {
-      if (!enabled) return;
+    (event: KeyboardEvent) => {
+      if (!enabled || targetSequence.length === 0) return;
 
-      const targetSequence = keys.map((k) => k.toLowerCase());
-      const timeout = 3000;
-      const processKey = (key: string) => {
-        keySequence.push(key.toLowerCase());
+      sequenceRef.current = [
+        ...sequenceRef.current,
+        event.key.toLowerCase(),
+      ].slice(-targetSequence.length);
 
-        if (keySequence.length > targetSequence.length) {
-          console.log(
-            "keySequence.length > targetSequence.length",
-            keySequence.length,
-            targetSequence.length
-          );
-          keySequence = keySequence.slice(-targetSequence.length);
-        }
+      if (sequenceRef.current.join("") === targetSequence.join("")) {
+        event.preventDefault();
+        callback();
+        resetSequence();
+        return;
+      }
 
-        if (keySequence.join("") === targetSequence.join("")) {
-          console.log(
-            'keySequence.join("") === targetSequence.join("")',
-            keySequence.join(""),
-            targetSequence.join("")
-          );
-          event.preventDefault();
-          callback();
-          keySequence = [];
-        }
-
-        setTimeout(() => {
-          console.log("setTimeout", keySequence);
-          keySequence = [];
-        }, timeout);
-      };
-
-      processKey(event.key);
+      scheduleReset();
     },
-    [keys, callback, enabled]
+    [callback, enabled, scheduleReset, targetSequence, resetSequence]
   );
 
   useEffect(() => {
-    if (!enabled) return;
-    const keySequence: string[] = [];
+    if (!enabled || targetSequence.length === 0) {
+      resetSequence();
+      return;
+    }
 
-    window.addEventListener("keydown", handleKeyDown(keySequence));
-    return () =>
-      window.removeEventListener("keydown", handleKeyDown(keySequence));
-  }, [handleKeyDown, enabled]);
+    const listener = (event: KeyboardEvent) => handleKeyDown(event);
+    window.addEventListener("keydown", listener);
+
+    return () => {
+      window.removeEventListener("keydown", listener);
+      resetSequence();
+    };
+  }, [enabled, handleKeyDown, resetSequence, targetSequence.length]);
 }
