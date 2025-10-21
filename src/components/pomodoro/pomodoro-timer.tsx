@@ -15,7 +15,6 @@ import { TimerPanel } from "@/components/pomodoro/timer-panel";
 import { TimerSettingsPanel } from "@/components/pomodoro/timer-settings-panel";
 import { useNotificationPreferences } from "@/hooks/use-notification-preferences";
 import { useScheduler } from "@/hooks/use-scheduler";
-import type { TaskEntry } from "@/hooks/use-scheduler";
 import type { TimerSettings } from "@/hooks/use-timer";
 import { playChime } from "@/lib/chime";
 import { formatTime } from "@/lib/time";
@@ -50,7 +49,6 @@ export function PomodoroTimer() {
     reset,
     skip,
     updateSettings,
-    schedule,
     selectedDayKey,
     selectedDay,
     todayKey,
@@ -66,6 +64,7 @@ export function PomodoroTimer() {
   } = useScheduler();
 
   const [localSettings, setLocalSettings] = useState(settings);
+  const [isSettingsCollapsed, setIsSettingsCollapsed] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const previousModeRef = useRef(mode);
 
@@ -176,14 +175,6 @@ export function PomodoroTimer() {
     void toggleNotifications();
   }, [toggleNotifications]);
 
-  const todaysActiveTask: TaskEntry | undefined = useMemo(() => {
-    const todaysEntry = schedule[todayKey];
-    if (!todaysEntry?.activeTaskId) return undefined;
-    return todaysEntry.tasks.find(
-      (task) => task.id === todaysEntry.activeTaskId
-    );
-  }, [schedule, todayKey]);
-
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-10 sm:px-6 md:py-16">
       <TaskTracker
@@ -207,7 +198,6 @@ export function PomodoroTimer() {
         completedFocusSessions={completedFocusSessions}
         totalDuration={totalDuration}
         progressValue={progressValue}
-        todaysActiveTask={todaysActiveTask}
         isRunning={isRunning}
         onStartOrPause={startOrPause}
         onReset={reset}
@@ -223,6 +213,8 @@ export function PomodoroTimer() {
         onRestoreDefaults={restoreDefaults}
         notificationSupported={notificationSupported}
         notificationStatus={notificationStatus}
+        areSettingsCollapsed={isSettingsCollapsed}
+        onToggleSettings={() => setIsSettingsCollapsed((previous) => !previous)}
       />
     </div>
   );

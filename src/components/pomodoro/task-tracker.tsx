@@ -441,15 +441,12 @@ export function TaskTracker({
                             </Button>
                           </div>
 
-			<div className="col-span-12 flex items-start justify-end gap-2">
-			    <strong className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-			      {formatDurationHMS(trackedSeconds)}
-			    </strong>
-			</div>
-
+                          <div className="col-span-12 flex items-start justify-end gap-2">
+                            <strong className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
+                              {formatDurationHMS(trackedSeconds)}
+                            </strong>
+                          </div>
                         </div>
-
-
 
                         {task.sessions.length > 0 && (
                           <details className="mt-4 rounded-xl border border-slate-200/70 bg-slate-50/70 p-4 text-xs text-slate-600 transition open:shadow-sm dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-300">

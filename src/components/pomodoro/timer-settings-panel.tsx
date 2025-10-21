@@ -29,6 +29,8 @@ interface TimerSettingsPanelProps {
   onRestoreDefaults: () => void;
   notificationSupported: boolean;
   notificationStatus: string | null;
+  areSettingsCollapsed: boolean;
+  onToggleSettings: () => void;
 }
 
 export function TimerSettingsPanel({
@@ -40,16 +42,30 @@ export function TimerSettingsPanel({
   onRestoreDefaults,
   notificationSupported,
   notificationStatus,
+  areSettingsCollapsed,
+  onToggleSettings,
 }: TimerSettingsPanelProps) {
   return (
     <Card className="p-6 sm:p-8">
-      <CardHeader>
-        <CardTitle>Session Preferences</CardTitle>
-        <CardDescription>
-          Customize durations and behavior. Changes are saved automatically to your browser.
+      <CardHeader className="grid grid-cols-5">
+        <CardTitle className="col-span-4">Session Preferences</CardTitle>
+        <Button
+          className="col-span-1"
+          variant={areSettingsCollapsed ? "secondary" : "destructive"}
+          size="sm"
+          onClick={onToggleSettings}
+          aria-expanded={!areSettingsCollapsed}
+          aria-label={areSettingsCollapsed ? "Show settings" : "Hide settings"}
+        >
+          {areSettingsCollapsed ? "Show" : "Hide"}
+        </Button>
+        <CardDescription className="col-span-6" hidden={areSettingsCollapsed}>
+          Customize durations and behavior. Changes are saved automatically to
+          your browser.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+
+      <CardContent className="space-y-6" hidden={areSettingsCollapsed}>
         <div className="grid gap-4 md:grid-cols-3">
           <label className="flex flex-col gap-2 text-sm font-medium text-slate-600 dark:text-slate-200">
             Focus (minutes)
@@ -109,7 +125,9 @@ export function TimerSettingsPanel({
           </label>
 
           <div className="flex flex-col gap-4 rounded-xl border border-slate-200/80 p-4 dark:border-slate-700/70">
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Toggles</span>
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+              Toggles
+            </span>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
@@ -158,7 +176,9 @@ export function TimerSettingsPanel({
                 </p>
               </div>
               <Button
-                variant={settings.notificationsEnabled ? "secondary" : "outline"}
+                variant={
+                  settings.notificationsEnabled ? "secondary" : "outline"
+                }
                 size="sm"
                 onClick={onToggleNotifications}
                 aria-pressed={settings.notificationsEnabled}
@@ -182,7 +202,9 @@ export function TimerSettingsPanel({
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <span>Timer persists locally so your preferences stay put on refresh.</span>
+          <span>
+            Timer persists locally so your preferences stay put on refresh.
+          </span>
           <Button
             variant="ghost"
             size="sm"
