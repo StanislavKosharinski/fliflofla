@@ -39,6 +39,9 @@ import {
   hoursMinutesToSeconds,
 } from "@/lib/time";
 import { MODE_LABELS } from "@/components/pomodoro/constants";
+import { useListManager } from "@/hooks/use-list-manager";
+import { ListItemComponent } from "./list-item";
+import { AddItem } from "./add-item";
 
 interface TaskTrackerProps {
   scheduleHydrated: boolean;
@@ -85,8 +88,18 @@ export function TaskTracker({
   const [showClearScheduleDialog, setShowClearScheduleDialog] = useState(false);
   const [showNotesDrawer, setShowNotesDrawer] = useState(false);
   const [showMemorySeedDrawer, setShowMemorySeedDrawer] = useState(false);
-  const [notesContent, setNotesContent] = useState("");
-  const [memorySeedContent, setMemorySeedContent] = useState("");
+
+  // List management for Notes and Memory Seeds
+  const {
+    notes,
+    memorySeeds,
+    addNote,
+    updateNote,
+    deleteNote,
+    addMemorySeed,
+    updateMemorySeed,
+    deleteMemorySeed,
+  } = useListManager();
 
   const copyFeedbackTimeout = useRef<number | null>(null);
 
@@ -633,7 +646,6 @@ export function TaskTracker({
                     Delete this day
                   </Button>
 
-                  {/* Notes Drawer Trigger */}
                   <Button
                     variant="outline"
                     size="sm"
@@ -644,7 +656,6 @@ export function TaskTracker({
                     📝 Notes
                   </Button>
 
-                  {/* Memory Seed Drawer Trigger */}
                   <Button
                     variant="outline"
                     size="sm"
@@ -697,7 +708,7 @@ export function TaskTracker({
       <Drawer
         open={showNotesDrawer}
         onOpenChange={setShowNotesDrawer}
-        side="left"
+        side="top"
       >
         <DrawerOverlay />
         <DrawerContent>
@@ -708,13 +719,30 @@ export function TaskTracker({
             </DrawerDescription>
           </DrawerHeader>
 
-          <div className="p-6">
-            <textarea
-              value={notesContent}
-              onChange={(e) => setNotesContent(e.target.value)}
-              placeholder="Write your quick notes here..."
-              className="w-full h-64 p-3 border border-slate-300 rounded-lg resize-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+          <div className="p-6 space-y-4">
+            <AddItem
+              onAdd={addNote}
+              placeholder="Add a new note..."
+              buttonText="Add Note"
             />
+
+            <div className="space-y-3">
+              {notes.length === 0 ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">
+                  No notes yet. Add your first note above!
+                </p>
+              ) : (
+                notes.map((item) => (
+                  <ListItemComponent
+                    key={item.id}
+                    item={item}
+                    onUpdate={updateNote}
+                    onDelete={deleteNote}
+                    placeholder="Enter note content..."
+                  />
+                ))
+              )}
+            </div>
           </div>
 
           <DrawerFooter>
@@ -722,7 +750,7 @@ export function TaskTracker({
               onClick={() => setShowNotesDrawer(false)}
               className="bg-blue-500 hover:bg-blue-600 text-white"
             >
-              Save & Close
+              Close
             </Button>
           </DrawerFooter>
         </DrawerContent>
@@ -732,7 +760,7 @@ export function TaskTracker({
       <Drawer
         open={showMemorySeedDrawer}
         onOpenChange={setShowMemorySeedDrawer}
-        side="right"
+        side="bottom"
       >
         <DrawerOverlay />
         <DrawerContent>
@@ -743,13 +771,30 @@ export function TaskTracker({
             </DrawerDescription>
           </DrawerHeader>
 
-          <div className="p-6">
-            <textarea
-              value={memorySeedContent}
-              onChange={(e) => setMemorySeedContent(e.target.value)}
+          <div className="p-6 space-y-4">
+            <AddItem
+              onAdd={addMemorySeed}
               placeholder="What should I focus on tomorrow? Key priorities, context, reminders..."
-              className="w-full h-64 p-3 border border-slate-300 rounded-lg resize-none focus:border-purple-500 focus:ring-2 focus:ring-purple-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+              buttonText="Add Seed"
             />
+
+            <div className="space-y-3">
+              {memorySeeds.length === 0 ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">
+                  No memory seeds yet. Add your first seed above!
+                </p>
+              ) : (
+                memorySeeds.map((item) => (
+                  <ListItemComponent
+                    key={item.id}
+                    item={item}
+                    onUpdate={updateMemorySeed}
+                    onDelete={deleteMemorySeed}
+                    placeholder="Enter memory seed content..."
+                  />
+                ))
+              )}
+            </div>
           </div>
 
           <DrawerFooter>
@@ -757,7 +802,7 @@ export function TaskTracker({
               onClick={() => setShowMemorySeedDrawer(false)}
               className="bg-purple-500 hover:bg-purple-600 text-white"
             >
-              Save & Close
+              Close
             </Button>
           </DrawerFooter>
         </DrawerContent>

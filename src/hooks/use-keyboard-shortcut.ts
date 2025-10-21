@@ -51,7 +51,7 @@ export function useKeyboardShortcut(
 
   useEffect(() => {
     if (!enabled) return;
-    let keySequence: string[] = [];
+    const keySequence: string[] = [];
 
     window.addEventListener("keydown", handleKeyDown(keySequence));
     return () =>
