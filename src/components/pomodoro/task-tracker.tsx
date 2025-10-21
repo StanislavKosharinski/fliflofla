@@ -364,7 +364,7 @@ export function TaskTracker({
                             : "border-slate-200 bg-white/90 hover:border-indigo-200 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:border-indigo-500/40"
                         )}
                       >
-                        <div className="grid grid-cols-12 gap-3">
+                        <div className="grid grid-cols-12">
                           {editingTaskId === task.id ? (
                             <form
                               onSubmit={handleEditingSubmit}
@@ -440,26 +440,16 @@ export function TaskTracker({
                               Delete
                             </Button>
                           </div>
+
+			<div className="col-span-12 flex items-start justify-end gap-2">
+			    <strong className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
+			      {formatDurationHMS(trackedSeconds)}
+			    </strong>
+			</div>
+
                         </div>
 
-                        <div className="mt-4 grid gap-2 text-xs text-slate-600 dark:text-slate-300 sm:grid-cols-4">
-                          <span className="flex flex-wrap items-center gap-2">
-                            Task timer:{" "}
-                            <strong className="font-semibold text-slate-900 dark:text-slate-100">
-                              {formatDurationHMS(trackedSeconds)}
-                            </strong>
-                            <span
-                              className={cn(
-                                "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                                isTimerRunning
-                                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-200"
-                                  : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-200"
-                              )}
-                            >
-                              {isTimerRunning ? "Running" : "Paused"}
-                            </span>
-                          </span>
-                        </div>
+
 
                         {task.sessions.length > 0 && (
                           <details className="mt-4 rounded-xl border border-slate-200/70 bg-slate-50/70 p-4 text-xs text-slate-600 transition open:shadow-sm dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-300">
