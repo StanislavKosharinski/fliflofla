@@ -19,8 +19,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerOverlay,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import type { DaySchedule, TaskEntry } from "@/hooks/use-scheduler";
 import { cn } from "@/lib/utils";
+import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
 import {
   formatDuration,
   formatDurationHMS,
@@ -73,6 +83,10 @@ export function TaskTracker({
   const [dayToDelete, setDayToDelete] = useState<string | null>(null);
   const [showDeleteDayDialog, setShowDeleteDayDialog] = useState(false);
   const [showClearScheduleDialog, setShowClearScheduleDialog] = useState(false);
+  const [showNotesDrawer, setShowNotesDrawer] = useState(false);
+  const [showMemorySeedDrawer, setShowMemorySeedDrawer] = useState(false);
+  const [notesContent, setNotesContent] = useState("");
+  const [memorySeedContent, setMemorySeedContent] = useState("");
 
   const copyFeedbackTimeout = useRef<number | null>(null);
 
@@ -278,6 +292,17 @@ export function TaskTracker({
     },
     []
   );
+
+  const handleOpenNotes = useCallback(() => {
+    setShowNotesDrawer(true);
+  }, []);
+
+  const handleOpenMemorySeed = useCallback(() => {
+    setShowMemorySeedDrawer(true);
+  }, []);
+
+  useKeyboardShortcut(["g", "n"], handleOpenNotes);
+  useKeyboardShortcut(["g", "s"], handleOpenMemorySeed);
 
   return (
     <>
@@ -598,14 +623,39 @@ export function TaskTracker({
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4 dark:border-slate-700">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={openDeleteDay}
-                  aria-label={`Delete schedule for ${dayLabel}`}
-                >
-                  Delete this day
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={openDeleteDay}
+                    aria-label={`Delete schedule for ${dayLabel}`}
+                  >
+                    Delete this day
+                  </Button>
+
+                  {/* Notes Drawer Trigger */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenNotes}
+                    aria-label="Open quick notes (g + n)"
+                    title="Open quick notes (g + n)"
+                  >
+                    📝 Notes
+                  </Button>
+
+                  {/* Memory Seed Drawer Trigger */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenMemorySeed}
+                    aria-label="Open memory seed (g + s)"
+                    title="Open memory seed (g + s)"
+                  >
+                    🌱 Memory Seed
+                  </Button>
+                </div>
+
                 <Button
                   variant="destructive"
                   size="sm"
@@ -642,6 +692,76 @@ export function TaskTracker({
         onCancel={() => setShowClearScheduleDialog(false)}
         onConfirm={confirmClearSchedule}
       />
+
+      {/* Notes Drawer - Left Side */}
+      <Drawer
+        open={showNotesDrawer}
+        onOpenChange={setShowNotesDrawer}
+        side="left"
+      >
+        <DrawerOverlay />
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>📝 Quick Notes</DrawerTitle>
+            <DrawerDescription>
+              Capture your thoughts, ideas, and quick notes.
+            </DrawerDescription>
+          </DrawerHeader>
+
+          <div className="p-6">
+            <textarea
+              value={notesContent}
+              onChange={(e) => setNotesContent(e.target.value)}
+              placeholder="Write your quick notes here..."
+              className="w-full h-64 p-3 border border-slate-300 rounded-lg resize-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            />
+          </div>
+
+          <DrawerFooter>
+            <Button
+              onClick={() => setShowNotesDrawer(false)}
+              className="bg-blue-500 hover:bg-blue-600 text-white"
+            >
+              Save & Close
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Memory Seed Drawer - Right Side */}
+      <Drawer
+        open={showMemorySeedDrawer}
+        onOpenChange={setShowMemorySeedDrawer}
+        side="right"
+      >
+        <DrawerOverlay />
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>🌱 Memory Seed</DrawerTitle>
+            <DrawerDescription>
+              Set context for tomorrow&apos;s work. What should you focus on?
+            </DrawerDescription>
+          </DrawerHeader>
+
+          <div className="p-6">
+            <textarea
+              value={memorySeedContent}
+              onChange={(e) => setMemorySeedContent(e.target.value)}
+              placeholder="What should I focus on tomorrow? Key priorities, context, reminders..."
+              className="w-full h-64 p-3 border border-slate-300 rounded-lg resize-none focus:border-purple-500 focus:ring-2 focus:ring-purple-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            />
+          </div>
+
+          <DrawerFooter>
+            <Button
+              onClick={() => setShowMemorySeedDrawer(false)}
+              className="bg-purple-500 hover:bg-purple-600 text-white"
+            >
+              Save & Close
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </>
   );
 }
