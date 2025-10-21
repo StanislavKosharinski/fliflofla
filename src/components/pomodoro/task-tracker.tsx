@@ -21,7 +21,7 @@ import {
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { DaySchedule, TaskEntry } from "@/hooks/use-scheduler";
 import { cn } from "@/lib/utils";
-import { formatDuration, formatTimeOfDay } from "@/lib/time";
+import { formatDuration, formatDurationHMS, formatTimeOfDay } from "@/lib/time";
 import { MODE_LABELS } from "@/components/pomodoro/constants";
 
 interface TaskTrackerProps {
@@ -66,6 +66,8 @@ export function TaskTracker({
 
   const copyFeedbackTimeout = useRef<number | null>(null);
 
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+
   useEffect(() => {
     setClipboardSupported(
       typeof navigator !== "undefined" &&
@@ -82,17 +84,40 @@ export function TaskTracker({
 
   const tasks = useMemo(() => selectedDay?.tasks ?? [], [selectedDay]);
 
-  const { dayFocusSeconds, dayBreakSeconds, daySessions } = useMemo(() => {
+  const hasRunningTask = useMemo(
+    () => tasks.some((task) => task.timerStartedAt !== null),
+    [tasks]
+  );
+
+  useEffect(() => {
+    if (!hasRunningTask) {
+      return;
+    }
+    setCurrentTime(Date.now());
+    const interval = window.setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [hasRunningTask]);
+
+  const { trackedSeconds } = useMemo(() => {
     return tasks.reduce(
       (acc, task) => {
-        acc.dayFocusSeconds += task.totalFocusSeconds;
-        acc.dayBreakSeconds += task.totalBreakSeconds;
-        acc.daySessions += task.sessions.length;
+        const isTimerRunning = task.timerStartedAt !== null;
+        const timerStartedAt = task.timerStartedAt ?? 0;
+        const liveTrackedSeconds =
+          task.trackedSeconds +
+          (isTimerRunning
+            ? Math.max(0, Math.floor((currentTime - timerStartedAt) / 1000))
+            : 0);
+        acc.trackedSeconds += liveTrackedSeconds;
         return acc;
       },
-      { dayFocusSeconds: 0, dayBreakSeconds: 0, daySessions: 0 }
+      { trackedSeconds: 0 }
     );
-  }, [tasks]);
+  }, [tasks, currentTime]);
 
   const isTodaySelected = selectedDayKey === todayKey;
   const dayLabel = selectedDay?.key ?? selectedDayKey;
@@ -198,7 +223,8 @@ export function TaskTracker({
           <div>
             <CardTitle>Task Tracker</CardTitle>
             <CardDescription>
-              Attach the timer to a task, review history, and keep progress per day.
+              Attach the timer to a task, review history, and keep progress per
+              day.
             </CardDescription>
           </div>
           <div className="mb-6 flex flex-wrap items-center gap-3">
@@ -244,7 +270,11 @@ export function TaskTracker({
                 size="sm"
                 onClick={handleCopyDaySummary}
                 aria-label={`Copy task list for ${dayLabel}`}
-                disabled={!clipboardSupported || !selectedDay || selectedDay.tasks.length === 0}
+                disabled={
+                  !clipboardSupported ||
+                  !selectedDay ||
+                  selectedDay.tasks.length === 0
+                }
               >
                 Copy task list
               </Button>
@@ -274,18 +304,10 @@ export function TaskTracker({
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Focus logged
+                    Total time logged
                   </p>
                   <p className="mt-1 font-semibold text-slate-900 dark:text-slate-100">
-                    {formatDuration(dayFocusSeconds)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Sessions
-                  </p>
-                  <p className="mt-1 font-semibold text-slate-900 dark:text-slate-100">
-                    {daySessions} total ({formatDuration(dayBreakSeconds)} break time)
+                    {formatDurationHMS(trackedSeconds)}
                   </p>
                 </div>
               </div>
@@ -304,7 +326,11 @@ export function TaskTracker({
                   placeholder="What are you working on?"
                   className="col-span-5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-indigo-400"
                 />
-                <Button type="submit" disabled={!taskTitle.trim()} aria-label="Add task">
+                <Button
+                  type="submit"
+                  disabled={!taskTitle.trim()}
+                  aria-label="Add task"
+                >
                   Add task
                 </Button>
               </form>
@@ -312,11 +338,22 @@ export function TaskTracker({
               <div className="space-y-4">
                 {tasks.length === 0 ? (
                   <p className="rounded-xl border border-slate-200/70 bg-slate-50/70 px-4 py-6 text-sm text-slate-500 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-300">
-                    No tasks logged for this day yet. Add one above to start tracking.
+                    No tasks logged for this day yet. Add one above to start
+                    tracking.
                   </p>
                 ) : (
                   tasks.map((task) => {
                     const isActive = selectedDay?.activeTaskId === task.id;
+                    const isTimerRunning = task.timerStartedAt !== null;
+                    const timerStartedAt = task.timerStartedAt ?? 0;
+                    const trackedSeconds =
+                      task.trackedSeconds +
+                      (isTimerRunning
+                        ? Math.max(
+                            0,
+                            Math.floor((currentTime - timerStartedAt) / 1000)
+                          )
+                        : 0);
                     return (
                       <div
                         key={task.id}
@@ -333,7 +370,10 @@ export function TaskTracker({
                               onSubmit={handleEditingSubmit}
                               className="col-span-8 gap-2 sm:flex-row sm:items-center sm:gap-3"
                             >
-                              <label htmlFor={`edit-${task.id}`} className="sr-only">
+                              <label
+                                htmlFor={`edit-${task.id}`}
+                                className="sr-only"
+                              >
                                 Edit task title
                               </label>
                               <input
@@ -362,27 +402,25 @@ export function TaskTracker({
                                 {task.title}
                               </h3>
                               <p className="text-xs text-slate-500 dark:text-slate-400">
-                                Created {formatTimeOfDay(task.createdAt)} • {task.sessions.length} sessions
+                                Created {formatTimeOfDay(task.createdAt)}
                               </p>
-                              <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
-                                <span className="inline-flex items-center rounded-full bg-white/70 px-2 py-1 text-slate-600 shadow-sm dark:bg-slate-800/70 dark:text-slate-100">
-                                  Focus {formatDuration(task.totalFocusSeconds)}
-                                </span>
-                                <span className="inline-flex items-center rounded-full bg-white/70 px-2 py-1 text-slate-600 shadow-sm dark:bg-slate-800/70 dark:text-slate-100">
-                                  Break {formatDuration(task.totalBreakSeconds)}
-                                </span>
-                              </div>
                             </div>
                           )}
                           <div className="col-span-4 flex items-start justify-end gap-2">
                             <Button
                               variant={isActive ? "secondary" : "outline"}
                               size="sm"
-                              onClick={() => onSetActiveTask(task.id)}
+                              onClick={() =>
+                                onSetActiveTask(isActive ? null : task.id)
+                              }
                               aria-pressed={isActive}
-                              aria-label={isActive ? "Task already active" : "Attach timer to this task"}
+                              aria-label={
+                                isActive
+                                  ? "Stop timer for this task"
+                                  : "Start timer for this task"
+                              }
                             >
-                              {isActive ? "Active" : "Set active"}
+                              {isActive ? "Stop timer" : "Start timer"}
                             </Button>
                             {editingTaskId !== task.id && (
                               <Button
@@ -404,24 +442,22 @@ export function TaskTracker({
                           </div>
                         </div>
 
-                        <div className="mt-4 grid gap-2 text-xs text-slate-600 dark:text-slate-300 sm:grid-cols-3">
-                          <span>
-                            Focus time:{" "}
+                        <div className="mt-4 grid gap-2 text-xs text-slate-600 dark:text-slate-300 sm:grid-cols-4">
+                          <span className="flex flex-wrap items-center gap-2">
+                            Task timer:{" "}
                             <strong className="font-semibold text-slate-900 dark:text-slate-100">
-                              {formatDuration(task.totalFocusSeconds)}
+                              {formatDurationHMS(trackedSeconds)}
                             </strong>
-                          </span>
-                          <span>
-                            Break time:{" "}
-                            <strong className="font-semibold text-slate-900 dark:text-slate-100">
-                              {formatDuration(task.totalBreakSeconds)}
-                            </strong>
-                          </span>
-                          <span>
-                            Last update:{" "}
-                            <strong className="font-semibold text-slate-900 dark:text-slate-100">
-                              {formatTimeOfDay(task.updatedAt)}
-                            </strong>
+                            <span
+                              className={cn(
+                                "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                                isTimerRunning
+                                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-200"
+                                  : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                              )}
+                            >
+                              {isTimerRunning ? "Running" : "Paused"}
+                            </span>
                           </span>
                         </div>
 
@@ -440,10 +476,12 @@ export function TaskTracker({
                                     className="flex flex-wrap items-center justify-between gap-2"
                                   >
                                     <span className="font-medium text-slate-800 dark:text-slate-100">
-                                      {MODE_LABELS[session.mode] ?? session.mode}
+                                      {MODE_LABELS[session.mode] ??
+                                        session.mode}
                                     </span>
                                     <span className="text-slate-500 dark:text-slate-400">
-                                      {formatDuration(session.elapsedSeconds)} • {formatTimeOfDay(session.startedAt)} –{" "}
+                                      {formatDuration(session.elapsedSeconds)} •{" "}
+                                      {formatTimeOfDay(session.startedAt)} –{" "}
                                       {formatTimeOfDay(session.endedAt)}
                                     </span>
                                     {session.interrupted && (
@@ -488,7 +526,9 @@ export function TaskTracker({
       <ConfirmDialog
         open={showDeleteDayDialog}
         title="Delete day?"
-        description={`This will remove all tasks and sessions for “${dayToDelete ?? ""}”. This action cannot be undone.`}
+        description={`This will remove all tasks and sessions for “${
+          dayToDelete ?? ""
+        }”. This action cannot be undone.`}
         confirmLabel="Delete day"
         onCancel={() => {
           setShowDeleteDayDialog(false);
@@ -522,7 +562,9 @@ function buildDaySummaryText(day: DaySchedule | undefined): string {
     return "No tasks recorded.";
   }
 
-  const lines = orderedTasks.map((task, index) => `${index + 1}. ${task.title}`);
+  const lines = orderedTasks.map(
+    (task, index) => `${index + 1}. ${task.title}`
+  );
 
   return lines.join("\n");
 }

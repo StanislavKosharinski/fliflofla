@@ -30,6 +30,23 @@ export function formatDuration(seconds: number): string {
   return parts.join(" ");
 }
 
+export function formatDurationHMS(totalSeconds: number): string {
+  if (!Number.isFinite(totalSeconds)) {
+    return "00:00:00";
+  }
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(safeSeconds / 3600)
+    .toString()
+    .padStart(2, "0");
+  const minutes = Math.floor((safeSeconds % 3600) / 60)
+    .toString()
+    .padStart(2, "0");
+  const seconds = Math.floor(safeSeconds % 60)
+    .toString()
+    .padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
+}
+
 export function formatTimeOfDay(timestamp: number): string {
   return TIME_OF_DAY_FORMAT.format(timestamp);
 }

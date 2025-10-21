@@ -127,16 +127,15 @@ export function PomodoroTimer() {
   }, [timeLeft, totalDuration]);
 
   const handleDurationChange = useCallback(
-    (key: DurationKey) =>
-      (event: ChangeEvent<HTMLInputElement>) => {
-        const nextValue = Number(event.target.value);
-        const sanitized = Number.isFinite(nextValue) ? Math.max(1, nextValue) : 1;
-        setLocalSettings((previous) => ({
-          ...previous,
-          [key]: sanitized,
-        }));
-        updateSettings({ [key]: sanitized });
-      },
+    (key: DurationKey) => (event: ChangeEvent<HTMLInputElement>) => {
+      const nextValue = Number(event.target.value);
+      const sanitized = Number.isFinite(nextValue) ? Math.max(1, nextValue) : 1;
+      setLocalSettings((previous) => ({
+        ...previous,
+        [key]: sanitized,
+      }));
+      updateSettings({ [key]: sanitized });
+    },
     [updateSettings]
   );
 
@@ -180,24 +179,13 @@ export function PomodoroTimer() {
   const todaysActiveTask: TaskEntry | undefined = useMemo(() => {
     const todaysEntry = schedule[todayKey];
     if (!todaysEntry?.activeTaskId) return undefined;
-    return todaysEntry.tasks.find((task) => task.id === todaysEntry.activeTaskId);
+    return todaysEntry.tasks.find(
+      (task) => task.id === todaysEntry.activeTaskId
+    );
   }, [schedule, todayKey]);
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-10 sm:px-6 md:py-16">
-      <TimerPanel
-        mode={mode}
-        formattedTime={formattedTime}
-        completedFocusSessions={completedFocusSessions}
-        totalDuration={totalDuration}
-        progressValue={progressValue}
-        todaysActiveTask={todaysActiveTask}
-        isRunning={isRunning}
-        onStartOrPause={startOrPause}
-        onReset={reset}
-        onSkip={skip}
-      />
-
       <TaskTracker
         scheduleHydrated={scheduleHydrated}
         selectedDayKey={selectedDayKey}
@@ -211,6 +199,19 @@ export function PomodoroTimer() {
         onDeleteDay={deleteDay}
         onClearSchedule={clearSchedule}
         onSetActiveTask={setActiveTask}
+      />
+
+      <TimerPanel
+        mode={mode}
+        formattedTime={formattedTime}
+        completedFocusSessions={completedFocusSessions}
+        totalDuration={totalDuration}
+        progressValue={progressValue}
+        todaysActiveTask={todaysActiveTask}
+        isRunning={isRunning}
+        onStartOrPause={startOrPause}
+        onReset={reset}
+        onSkip={skip}
       />
 
       <TimerSettingsPanel

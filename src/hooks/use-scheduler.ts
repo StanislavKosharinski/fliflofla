@@ -21,6 +21,8 @@ export interface TaskEntry {
   totalFocusSeconds: number;
   totalBreakSeconds: number;
   sessions: TaskSessionRecord[];
+  trackedSeconds: number;
+  timerStartedAt: number | null;
 }
 
 export interface DaySchedule {
@@ -32,6 +34,39 @@ export interface DaySchedule {
 }
 
 type ScheduleState = Record<string, DaySchedule>;
+
+const computeElapsedSeconds = (timerStartedAt: number, now: number): number => {
+  return Math.max(0, Math.floor((now - timerStartedAt) / 1000));
+};
+
+// Fold the in-flight timer into the persisted total before clearing it.
+const stopTaskTimer = (task: TaskEntry, now: number): TaskEntry => {
+  if (!task.timerStartedAt) {
+    return task;
+  }
+  const elapsed = computeElapsedSeconds(task.timerStartedAt, now);
+  return {
+    ...task,
+    trackedSeconds: task.trackedSeconds + elapsed,
+    timerStartedAt: null,
+    updatedAt: now,
+  };
+};
+
+// Start (or refresh) the timer for the chosen task.
+const startTaskTimer = (task: TaskEntry, now: number): TaskEntry => {
+  if (task.timerStartedAt) {
+    return {
+      ...task,
+      updatedAt: now,
+    };
+  }
+  return {
+    ...task,
+    timerStartedAt: now,
+    updatedAt: now,
+  };
+};
 
 interface SchedulerControls {
   schedule: ScheduleState;
@@ -133,6 +168,11 @@ const augmentDay = (day: DaySchedule): DaySchedule => ({
       (acc, session) => (session.mode !== "focus" ? acc + session.elapsedSeconds : acc),
       0
     ) ?? 0,
+    trackedSeconds: task.trackedSeconds ?? 0,
+    timerStartedAt:
+      typeof task.timerStartedAt === "number" && Number.isFinite(task.timerStartedAt)
+        ? task.timerStartedAt
+        : null,
     updatedAt: task.updatedAt ?? task.createdAt ?? Date.now(),
   })),
 });
@@ -248,14 +288,18 @@ const setSelectedDay = useCallback((dayKey: string) => {
       const dayKey = selectedDayKey;
       mutateDay(dayKey, (day) => {
         const id = generateId();
+        const now = Date.now();
+        const shouldActivate = day.activeTaskId === null;
         const task: TaskEntry = {
           id,
           title: title.trim(),
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
+          createdAt: now,
+          updatedAt: now,
           totalFocusSeconds: 0,
           totalBreakSeconds: 0,
           sessions: [],
+          trackedSeconds: 0,
+          timerStartedAt: shouldActivate ? now : null,
         };
         const tasks = [...day.tasks, task];
         return {
@@ -288,13 +332,24 @@ const setSelectedDay = useCallback((dayKey: string) => {
 
   const deleteTask = useCallback(
     (taskId: string) => {
+      const now = Date.now();
       mutateDay(selectedDayKey, (day) => {
         const remaining = day.tasks.filter((task) => task.id !== taskId);
-        const activeTaskId = day.activeTaskId === taskId ? remaining[0]?.id ?? null : day.activeTaskId;
+        const wasActive = day.activeTaskId === taskId;
+        const nextActiveId = wasActive ? remaining[0]?.id ?? null : day.activeTaskId;
+        const tasks = remaining.map((task) => {
+          if (nextActiveId && task.id === nextActiveId) {
+            return startTaskTimer(task, now);
+          }
+          if (task.timerStartedAt && (!nextActiveId || task.id !== nextActiveId)) {
+            return stopTaskTimer(task, now);
+          }
+          return task;
+        });
         return {
           ...day,
-          tasks: remaining,
-          activeTaskId,
+          tasks,
+          activeTaskId: nextActiveId,
         };
       });
     },
@@ -327,10 +382,27 @@ const setSelectedDay = useCallback((dayKey: string) => {
 
   const setActiveTask = useCallback(
     (taskId: string | null) => {
-      mutateDay(selectedDayKey, (day) => ({
-        ...day,
-        activeTaskId: taskId,
-      }));
+      const now = Date.now();
+      mutateDay(selectedDayKey, (day) => {
+        const tasks = day.tasks.map((task) => {
+          if (taskId && task.id === taskId) {
+            return startTaskTimer(task, now);
+          }
+          if (task.timerStartedAt) {
+            return stopTaskTimer(task, now);
+          }
+          return task;
+        });
+
+        const nextActiveId =
+          taskId && tasks.some((task) => task.id === taskId) ? taskId : null;
+
+        return {
+          ...day,
+          activeTaskId: nextActiveId,
+          tasks,
+        };
+      });
     },
     [mutateDay, selectedDayKey]
   );
