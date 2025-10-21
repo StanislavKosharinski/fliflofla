@@ -21,7 +21,13 @@ import {
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { DaySchedule, TaskEntry } from "@/hooks/use-scheduler";
 import { cn } from "@/lib/utils";
-import { formatDuration, formatDurationHMS, formatTimeOfDay } from "@/lib/time";
+import {
+  formatDuration,
+  formatDurationHMS,
+  formatTimeOfDay,
+  secondsToHoursMinutes,
+  hoursMinutesToSeconds,
+} from "@/lib/time";
 import { MODE_LABELS } from "@/components/pomodoro/constants";
 
 interface TaskTrackerProps {
@@ -33,6 +39,7 @@ interface TaskTrackerProps {
   onSelectDay: (dayKey: string) => void;
   onAddTask: (title: string) => void;
   onUpdateTaskTitle: (taskId: string, title: string) => void;
+  onUpdateTaskTrackedTime: (taskId: string, trackedSeconds: number) => void;
   onDeleteTask: (taskId: string) => void;
   onDeleteDay: (dayKey: string) => void;
   onClearSchedule: () => void;
@@ -50,6 +57,7 @@ export function TaskTracker({
   onSelectDay,
   onAddTask,
   onUpdateTaskTitle,
+  onUpdateTaskTrackedTime,
   onDeleteTask,
   onDeleteDay,
   onClearSchedule,
@@ -58,6 +66,8 @@ export function TaskTracker({
   const [taskTitle, setTaskTitle] = useState("");
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [editingTrackedHours, setEditingTrackedHours] = useState(0);
+  const [editingTrackedMinutes, setEditingTrackedMinutes] = useState(0);
   const [copyStatus, setCopyStatus] = useState<CopyStatus>(null);
   const [clipboardSupported, setClipboardSupported] = useState(false);
   const [dayToDelete, setDayToDelete] = useState<string | null>(null);
@@ -146,11 +156,16 @@ export function TaskTracker({
   const beginEditingTask = useCallback((task: TaskEntry) => {
     setEditingTaskId(task.id);
     setEditingTitle(task.title);
+    const { hours, minutes } = secondsToHoursMinutes(task.trackedSeconds);
+    setEditingTrackedHours(hours);
+    setEditingTrackedMinutes(minutes);
   }, []);
 
   const cancelEditingTask = useCallback(() => {
     setEditingTaskId(null);
     setEditingTitle("");
+    setEditingTrackedHours(0);
+    setEditingTrackedMinutes(0);
   }, []);
 
   const handleEditingSubmit = useCallback(
@@ -161,10 +176,36 @@ export function TaskTracker({
         cancelEditingTask();
         return;
       }
+
+      // Find the task being edited to check if timer is running
+      const taskBeingEdited = selectedDay?.tasks.find(
+        (task) => task.id === editingTaskId
+      );
+      const isTimerRunning = taskBeingEdited?.timerStartedAt !== null;
+
       onUpdateTaskTitle(editingTaskId, editingTitle.trim());
+
+      // Only update tracked time if timer is not running
+      if (!isTimerRunning) {
+        const trackedSeconds = hoursMinutesToSeconds(
+          editingTrackedHours,
+          editingTrackedMinutes
+        );
+        onUpdateTaskTrackedTime(editingTaskId, trackedSeconds);
+      }
+
       cancelEditingTask();
     },
-    [cancelEditingTask, editingTaskId, editingTitle, onUpdateTaskTitle]
+    [
+      cancelEditingTask,
+      editingTaskId,
+      editingTitle,
+      editingTrackedHours,
+      editingTrackedMinutes,
+      onUpdateTaskTitle,
+      onUpdateTaskTrackedTime,
+      selectedDay,
+    ]
   );
 
   const handleCopyDaySummary = useCallback(() => {
@@ -212,6 +253,28 @@ export function TaskTracker({
   const handleEditingTitleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       setEditingTitle(event.target.value);
+    },
+    []
+  );
+
+  const handleEditingTrackedHoursChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const value = Math.max(
+        0,
+        Math.min(23, parseInt(event.target.value) || 0)
+      );
+      setEditingTrackedHours(value);
+    },
+    []
+  );
+
+  const handleEditingTrackedMinutesChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const value = Math.max(
+        0,
+        Math.min(59, parseInt(event.target.value) || 0)
+      );
+      setEditingTrackedMinutes(value);
     },
     []
   );
@@ -368,21 +431,68 @@ export function TaskTracker({
                           {editingTaskId === task.id ? (
                             <form
                               onSubmit={handleEditingSubmit}
-                              className="col-span-8 gap-2 sm:flex-row sm:items-center sm:gap-3"
+                              className="col-span-8 space-y-3"
                             >
-                              <label
-                                htmlFor={`edit-${task.id}`}
-                                className="sr-only"
-                              >
-                                Edit task title
-                              </label>
-                              <input
-                                id={`edit-${task.id}`}
-                                value={editingTitle}
-                                onChange={handleEditingTitleChange}
-                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-indigo-400"
-                              />
-                              <div className="mt-2 flex gap-2">
+                              <div>
+                                <label
+                                  htmlFor={`edit-title-${task.id}`}
+                                  className="sr-only"
+                                >
+                                  Edit task title
+                                </label>
+                                <input
+                                  id={`edit-title-${task.id}`}
+                                  value={editingTitle}
+                                  onChange={handleEditingTitleChange}
+                                  placeholder="Task title"
+                                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-indigo-400"
+                                />
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label
+                                    htmlFor={`edit-hours-${task.id}`}
+                                    className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
+                                  >
+                                    Hours
+                                  </label>
+                                  <input
+                                    id={`edit-hours-${task.id}`}
+                                    type="number"
+                                    min="0"
+                                    max="23"
+                                    value={editingTrackedHours}
+                                    onChange={handleEditingTrackedHoursChange}
+                                    disabled={isTimerRunning}
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-indigo-400 disabled:cursor-not-allowed disabled:opacity-60"
+                                  />
+                                </div>
+                                <div>
+                                  <label
+                                    htmlFor={`edit-minutes-${task.id}`}
+                                    className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
+                                  >
+                                    Minutes
+                                  </label>
+                                  <input
+                                    id={`edit-minutes-${task.id}`}
+                                    type="number"
+                                    min="0"
+                                    max="59"
+                                    value={editingTrackedMinutes}
+                                    onChange={handleEditingTrackedMinutesChange}
+                                    disabled={isTimerRunning}
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-indigo-400 disabled:cursor-not-allowed disabled:opacity-60"
+                                  />
+                                </div>
+                              </div>
+                              {isTimerRunning && (
+                                <p className="rounded-md border border-amber-200/70 bg-amber-50/70 px-3 py-2 text-xs text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+                                  Time editing is disabled while the timer is
+                                  running. Stop the timer to edit tracked time.
+                                </p>
+                              )}
+                              <div className="flex gap-2">
                                 <Button type="submit" size="sm">
                                   Save
                                 </Button>

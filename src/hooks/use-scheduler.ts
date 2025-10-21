@@ -76,6 +76,7 @@ interface SchedulerControls {
   setSelectedDay: (dayKey: string) => void;
   addTask: (title: string) => void;
   updateTaskTitle: (taskId: string, title: string) => void;
+  updateTaskTrackedTime: (taskId: string, trackedSeconds: number) => void;
   deleteTask: (taskId: string) => void;
   deleteDay: (dayKey: string) => void;
   clearSchedule: () => void;
@@ -330,6 +331,24 @@ const setSelectedDay = useCallback((dayKey: string) => {
     [mutateDay, selectedDayKey]
   );
 
+  const updateTaskTrackedTime = useCallback(
+    (taskId: string, trackedSeconds: number) => {
+      mutateDay(selectedDayKey, (day) => ({
+        ...day,
+        tasks: day.tasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                trackedSeconds: Math.max(0, trackedSeconds),
+                updatedAt: Date.now(),
+              }
+            : task
+        ),
+      }));
+    },
+    [mutateDay, selectedDayKey]
+  );
+
   const deleteTask = useCallback(
     (taskId: string) => {
       const now = Date.now();
@@ -476,6 +495,7 @@ const setSelectedDay = useCallback((dayKey: string) => {
     setSelectedDay,
     addTask,
     updateTaskTitle,
+    updateTaskTrackedTime,
     deleteTask,
     deleteDay,
     clearSchedule,

@@ -55,4 +55,14 @@ export function isTimeApiAvailable(): boolean {
   return typeof window !== "undefined";
 }
 
+export function secondsToHoursMinutes(seconds: number): { hours: number; minutes: number } {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return { hours, minutes };
+}
+
+export function hoursMinutesToSeconds(hours: number, minutes: number): number {
+  return (hours * 3600) + (minutes * 60);
+}
+
 export { TIME_OF_DAY_FORMAT };

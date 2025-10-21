@@ -9,11 +9,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import type { TaskEntry } from "@/hooks/use-scheduler";
 import type { TimerMode } from "@/hooks/use-timer";
-import { cn } from "@/lib/utils";
 import { MODE_LABELS } from "@/components/pomodoro/constants";
-import { formatDuration } from "@/lib/time";
 
 interface TimerPanelProps {
   mode: TimerMode;

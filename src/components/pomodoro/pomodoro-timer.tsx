@@ -55,6 +55,7 @@ export function PomodoroTimer() {
     setSelectedDay,
     addTask,
     updateTaskTitle,
+    updateTaskTrackedTime,
     deleteTask,
     deleteDay,
     clearSchedule,
@@ -186,6 +187,7 @@ export function PomodoroTimer() {
         onSelectDay={setSelectedDay}
         onAddTask={addTask}
         onUpdateTaskTitle={updateTaskTitle}
+        onUpdateTaskTrackedTime={updateTaskTrackedTime}
         onDeleteTask={deleteTask}
         onDeleteDay={deleteDay}
         onClearSchedule={clearSchedule}
